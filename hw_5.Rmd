@@ -8,8 +8,7 @@ output: github_document
 ```{r setup, include=FALSE}
 
 library(tidyverse)
-library(viridis)
-library(dplyr)
+library(rvest)
 
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -24,6 +23,7 @@ options(
 )
 scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
+
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
@@ -39,32 +39,84 @@ iris_with_missing = iris %>%
 
 ### Function
 
-* For numeric variables, you should fill in missing values with the mean of non-missing values
-* For character variables, you should fill in missing values with "virginica"
+Fill in missings in iris dataframe
 ```{r}
-# takes a vector as an argument; replaces missing values using the rules defined above; and returns the resulting vector
+replace_iris = function(x) {
+  # If NULL and numeric, replace with mean value for that column
+  replace_numeric = mean(x, na.rm = TRUE)
+  # If NULL and character, replace with "virginica"
+  replace_character = "virginica"
+  
+  # conditional execution
+  if(is.null(.)) {rep(FALSE, replace_numeric)}
+  else {rep(FALSE, replace_character)}
+  }
 
+# define output dataframe
+output = vector(df, length = 4)
+# for loop to apply function to dataframe
+for (i in 1:150) {
+  output[[i]] = replace_iris(df[[i]])
+}
 
-# Apply this function to the columns of iris_with_missing using a map statement
+# map it
+purrr::output = map_df(.x = df, ~ replace_iris(.x))
 
 ```
 
 
 # Problem 2
 
-### Tidy Dataframe (containing data from all participants, including the subject ID, arm, and observations over time)
-
-* Start with a dataframe containing all file names; the list.files function will help
-* Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
-* Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
+### Tidy Dataframe
 ```{r}
+# Function to pull in files and create columns
 
+find_files = function(combine) {
+  
+  z = list.files(path = "./data")
+  # Make each row a unique id
+  patient = z %>%
+    str_extract(" ") %>%
+    as.numeric()
+  # Extract week variables
+  week = z %>%
+    str_extract("\\week") %>%
+    as.numeric()
+  # Extract data
+  obs = z %>%
+    str_extract(" ") %>%
+    as.numeric()
+
+ # Format new data frame 
+  data_frame(patient, week, obs)
+}
+
+# for loop to apply function to dataframe
+output = vector()
+
+for (i in 1:10) {
+  output[[i]] = read_page_reviews(vec_urls[[i]])
+}
+
+tidy_subject = bind_rows(output)
+# map variables onto new df
+tidy_subject = map_df(find_files)
+
+# tidy the dataframe
 ```
 
 ### Spagetti Plot (showing observations on each subject over time, and comment on differences between groups)
 
 ```{r}
-
+tidy_subject %>% 
+  group_by(week, patient) %>% 
+  #summarize(mean_exc = mean(data_value)) %>% 
+  ggplot(aes(x = week, y = obs, group = patient, color = patient)) +
+  geom_path() + 
+  labs(caption = "Subject scores over time") + 
+  viridis::scale_color_viridis(
+    discrete = TRUE) + 
+  theme(legend.position = "none")
 ```
 
 
@@ -73,7 +125,15 @@ iris_with_missing = iris %>%
 ### Linear Regression Model
 
 ```{r}
+sim_data = tibble(
+  x = rnorm(30, mean = 1, sd = 1),
+  y = 2 + 3 * x + rnorm(30, 0, 1)
+)
 
+ls_fit = lm(y ~ x, data = sim_data)
+  
+beta0_hat = coef(ls_fit)[1]
+beta1_hat = coef(ls_fit)[2]
 ```
 
 * Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β2 on the x axis. Describe the association between effect size and power.
