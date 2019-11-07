@@ -69,19 +69,21 @@ complete_iris
 df_read = list.files(path = "./data")
 
 # Iterate over file names and read in data for each subject
-tidy_function = function(df_read)  {
+tidy_function = function(input_x)  {
 
   # subject ID
-  subject_id = df_read %>%
+  subject_id = input_x %>%
     str_extract("\\d{2}") 
   
   # arm
-  arm = df_read %>%
+  arm = input_x %>%
     str_extract("[:lower:]{3}")
+  
 
   # Extract week observation variables from csv
   df_extract = 
-    read_csv("./data/con_01.csv") %>%
+  # BREAKING HERE
+    read_csv("./data") %>%
     pivot_longer(
       cols = week_1:week_8,
       names_to = "week",
@@ -97,30 +99,26 @@ tidy_function = function(df_read)  {
     select(observation)
 
  # Format new data frame 
-  data_frame(arm, observation, week)
-}
+ data_frame(arm, observation, week)
+} 
 
 # Map and saving the result as a new variable in the dataframe
-tidy_subjects = map_df(df_read, ~ tidy_function(.x))
+tidy_subjects = map(df_read, ~ tidy_function(.x))
+
+# save result as a new variable in the dataframe
+
+# tidy the resulting dataframe
 ```
-
-
-
-
-
-
-
-
-
-
+weather_nest =
+  weather %>% 
+  nest(data = date:tmin)
 
 ### Spagetti Plot (showing observations on each subject over time, and comment on differences between groups)
 
 ```{r}
-tidy_subject %>% 
-  group_by(week, patient) %>% 
-  #summarize(mean_exc = mean(data_value)) %>% 
-  ggplot(aes(x = week, y = obs, group = patient, color = patient)) +
+# Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
+tidy_subjects %>% 
+  ggplot(aes(x = week, y = observation, group = subject_id, color = subject_id)) +
   geom_path() + 
   labs(caption = "Subject scores over time") + 
   viridis::scale_color_viridis(
@@ -132,18 +130,35 @@ tidy_subject %>%
 # Problem 3
 
 ### Linear Regression Model
-
 ```{r}
-sim_data = tibble(
-  x = rnorm(30, mean = 1, sd = 1),
-  y = 2 + 3 * x + rnorm(30, 0, 1)
-)
-
-ls_fit = lm(y ~ x, data = sim_data)
+# create model
+sim_regression = function(n, beta0 = 2) {
   
-beta0_hat = coef(ls_fit)[1]
-beta1_hat = coef(ls_fit)[2]
+  sim_data = tibble(
+    x = rnorm(n, mean = 1, sd = 1),
+    y = beta0 * x + rnorm(n, 0, 1)
+  )
+  
+  ls_fit = lm(y ~ x, data = sim_data)
+  
+  tibble(
+    beta0_hat = coef(ls_fit)[1],
+    beta1_hat = coef(ls_fit)[2]
+  )
+}
+
+## rerun using a for loop
+output = vector("list", length = 5000)
+for (i in 1:5000) {
+  
+  output[[i]] = sim_regression(n = 30)
+  
+}
+
+bind_rows(output) %>% 
+  ggplot(aes(x = beta0_hat)) + geom_density()
 ```
+
 
 * Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β2 on the x axis. Describe the association between effect size and power.
 ```{r}
