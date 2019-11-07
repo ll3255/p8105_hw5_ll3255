@@ -68,95 +68,93 @@ complete_iris
 # Dataframe containing all file names
 df_read = list.files(path = "./data")
 
-# Iterate over file names and read in data for each subject
-tidy_function = function(input_x)  {
+# Function to read in individual csv files
 
-  # subject ID
-  subject_id = input_x %>%
-    str_extract("\\d{2}") 
-  
-  # arm
-  arm = input_x %>%
-    str_extract("[:lower:]{3}")
-  
-
-  # Extract week observation variables from csv
-  df_extract = 
-  # BREAKING HERE
-    read_csv("./data") %>%
+  csv_content =  data_frame(files =  df_read) %>%
+  mutate(
+    extract_data = map(files, ~read_csv(str_c("./data/", .x)))) %>% 
+    #unnest to extrarct variables
+  unnest(cols = extract_data) %>%
+    #tidy weeks and obserrvations
     pivot_longer(
       cols = week_1:week_8,
       names_to = "week",
       values_to = "observation"
-    )
-  
-  # week
-  week = df_extract %>%
-    select(week)
-  
-  # observation
-    observation = df_extract %>%
-    select(observation)
-
- # Format new data frame 
- data_frame(arm, observation, week)
-} 
-
-# Map and saving the result as a new variable in the dataframe
-tidy_subjects = map(df_read, ~ tidy_function(.x))
-
-# save result as a new variable in the dataframe
-
-# tidy the resulting dataframe
+    ) %>%
+    # subject ID
+  mutate(subject_id = 
+           files %>%
+           str_extract("\\d{2}")) %>%
+  # arm
+  mutate(arm = 
+           files %>%
+           str_extract("[:lower:]{3}"))
 ```
-weather_nest =
-  weather %>% 
-  nest(data = date:tmin)
 
-### Spagetti Plot (showing observations on each subject over time, and comment on differences between groups)
 
+### Spagetti Plot
 ```{r}
 # Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
-tidy_subjects %>% 
-  ggplot(aes(x = week, y = observation, group = subject_id, color = subject_id)) +
+csv_content %>% 
+  group_by(subject_id) %>%
+  ggplot(aes(x = week, y = observation, group = subject_id, color = arm)) +
   geom_path() + 
-  labs(caption = "Subject scores over time") + 
+  labs(caption = "observations on each subject over time") + 
   viridis::scale_color_viridis(
     discrete = TRUE) + 
   theme(legend.position = "none")
 ```
+• Differences between groups: 
 
 
 # Problem 3
 
-### Linear Regression Model
+### Linear Regression Model ()
 ```{r}
-# create model
-sim_regression = function(n, beta0 = 2) {
+# create function to draw the sample and calculate the y's
+sim_data = tibble (
+  beta0 = 2,
+  beta1 = 0,
+  x = rnorm(30),
+  error = 50,
+  y = beta0 + beta1*x + error
+)
+
+# create function to run regressions and output beta1_hat and p-value 
+sim_regression = function(n, beta0, beta1) {
   
   sim_data = tibble(
-    x = rnorm(n, mean = 1, sd = 1),
-    y = beta0 * x + rnorm(n, 0, 1)
+    x = rnorm(n, 0, 1),
+    y = beta0 + beta1 * x + rnorm(n, 0, 7.07)
   )
   
   ls_fit = lm(y ~ x, data = sim_data)
   
   tibble(
-    beta0_hat = coef(ls_fit)[1],
     beta1_hat = coef(ls_fit)[2]
   )
 }
 
-## rerun using a for loop
-output = vector("list", length = 5000)
-for (i in 1:5000) {
-  
-  output[[i]] = sim_regression(n = 30)
-  
-}
+# get output from the function
+output = vector("list", 100)
 
-bind_rows(output) %>% 
-  ggplot(aes(x = beta0_hat)) + geom_density()
+# run regressions
+for (i in 1:100) {
+  output[[i]] = sim_regression(30)
+}
+# clean the results from the iterration
+sim_results = bind_rows(output)
+# iterate
+sim_results = 
+  rerun(100, sim_regression(30, 2, 3)) %>% 
+  bind_rows()
+
+# visualize results
+sim_results %>% 
+  ggplot(aes(x = beta0_hat, y = beta1_hat)) + 
+  geom_point()
+# p-value?
+#broom::tidy()
 ```
 
 
