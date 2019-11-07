@@ -9,6 +9,7 @@ output: github_document
 
 library(tidyverse)
 library(rvest)
+library(stringr)
 
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -56,6 +57,7 @@ complete_iris = map_df(iris_with_missing, ~ replace_iris(.x))
 
 complete_iris
 # Checks >> Sepal.Length Mean 5.819, Sepal.Width Mean 3.075, Petal.Length Mean 3.765, Petal.Width Mean 1.192 
+# iris_with_missing
 ```
 
 
@@ -63,29 +65,43 @@ complete_iris
 
 ### Tidy Dataframe
 ```{r}
-# Function to pull in files and create columns
-find_files = function(combine) {
+# Dataframe containing all file names
+df_read = list.files(path = "./data")
+
+# Iterate over file names and read in data for each subject
+tidy_function = function(df_read)  {
+
+  # subject ID
+  subject_id = df_read %>%
+    str_extract("\\d{2}") 
   
-  z = list.files(path = "./data")
-  # Make each row a unique id
-  patient = z %>%
-    str_extract(" ") %>%
-    as.numeric()
+  # arm
+  arm = df_read %>%
+    str_extract("[:lower:]{3}")
+
+  # Extract week observation variables from csv
+  df_extract = 
+    read_csv("./data/con_01.csv") %>%
+    pivot_longer(
+      cols = week_1:week_8,
+      names_to = "week",
+      values_to = "observation"
+    )
   
-  # Extract week variables
-  week = z %>%
-    str_extract("\\week") %>%
-    as.numeric()
+  # week
+  week = df_extract %>%
+    select(week)
   
-  # Extract data
-  obs = z %>%
-    str_extract(" ") %>%
-    as.numeric()
+  # observation
+    observation = df_extract %>%
+    select(observation)
 
  # Format new data frame 
-  data_frame(patient, week, obs)
+  data_frame(arm, observation, week)
 }
 
+# Map and saving the result as a new variable in the dataframe
+tidy_subjects = map_df(df_read, ~ tidy_function(.x))
 ```
 
 
