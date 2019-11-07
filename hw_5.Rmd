@@ -41,27 +41,21 @@ iris_with_missing = iris %>%
 
 Fill in missings in iris dataframe
 ```{r}
-replace_iris = function(x) {
-  # If NULL and numeric, replace with mean value for that column
-  replace_numeric = mean(x, na.rm = TRUE)
-  # If NULL and character, replace with "virginica"
-  replace_character = "virginica"
+replace_iris = function(input_x) {
   
-  # conditional execution
-  if(is.null(.)) {rep(FALSE, replace_numeric)}
-  else {rep(FALSE, replace_character)}
-  }
-
-# define output dataframe
-output = vector(df, length = 4)
-# for loop to apply function to dataframe
-for (i in 1:150) {
-  output[[i]] = replace_iris(df[[i]])
+  # If null and numeric, replace with mean value for that column
+  if(is.numeric(input_x)) {replace(input_x, is.na(input_x), mean(input_x,na.rm = TRUE))}
+  
+  # If null and character, replace with "virginica"
+  else if(!is.numeric(input_x)) {replace(input_x, is.na(input_x), "virginica")}
+  
 }
 
 # map it
-purrr::output = map_df(.x = df, ~ replace_iris(.x))
+complete_iris = map_df(iris_with_missing, ~ replace_iris(.x))
 
+complete_iris
+# Checks >> Sepal.Length Mean 5.819, Sepal.Width Mean 3.075, Petal.Length Mean 3.765, Petal.Width Mean 1.192 
 ```
 
 
@@ -70,7 +64,6 @@ purrr::output = map_df(.x = df, ~ replace_iris(.x))
 ### Tidy Dataframe
 ```{r}
 # Function to pull in files and create columns
-
 find_files = function(combine) {
   
   z = list.files(path = "./data")
@@ -78,10 +71,12 @@ find_files = function(combine) {
   patient = z %>%
     str_extract(" ") %>%
     as.numeric()
+  
   # Extract week variables
   week = z %>%
     str_extract("\\week") %>%
     as.numeric()
+  
   # Extract data
   obs = z %>%
     str_extract(" ") %>%
@@ -91,19 +86,17 @@ find_files = function(combine) {
   data_frame(patient, week, obs)
 }
 
-# for loop to apply function to dataframe
-output = vector()
-
-for (i in 1:10) {
-  output[[i]] = read_page_reviews(vec_urls[[i]])
-}
-
-tidy_subject = bind_rows(output)
-# map variables onto new df
-tidy_subject = map_df(find_files)
-
-# tidy the dataframe
 ```
+
+
+
+
+
+
+
+
+
+
 
 ### Spagetti Plot (showing observations on each subject over time, and comment on differences between groups)
 
