@@ -64,7 +64,7 @@ complete_iris
 # Problem 2
 
 ### Tidy Dataframe
-```{r}
+```{r, message=FALSE}
 # Dataframe containing all file names
 df_read = list.files(path = "./data")
 
@@ -102,9 +102,10 @@ csv_content %>%
   labs(caption = "observations on each subject over time") + 
   viridis::scale_color_viridis(
     discrete = TRUE) + 
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 ```
-• Differences between groups: 
+
+• Observations for the experimental group are positively correlated with time and great than the observation in the controrl group which are negatively corerlated with time.
 
 
 # Problem 3
@@ -112,50 +113,96 @@ csv_content %>%
 ### Linear Regression Model 
 ```{r}
 # function
-set.seed(1)
-library(broom)
+set.seed(10)
 
 sim_regression = function(n = 30, beta0 = 2, beta1 = 0, variance = 50) {
-  
+  # data for simulation
   sim_data = tibble(
     x = rnorm(n, mean = 0, sd = 1),
     y = beta0 + beta1 * x + rnorm(n, 0, 7.07)
-  )
-  
+    )
+ 
+  # regression model
   ls_fit = lm(y ~ x, data = sim_data)
   
-  tidy(ls_fit)
-  
+  broom::tidy(ls_fit)
 }
-```
 
-```{r}
-# get estimates
-sim_regression(beta1=0)
-```
 
-```{r}
-## rerun using a for loop
-output = vector("list", length = 1000)
-for (i in 1:1000) {
+# visualize results from function
+
+output = 
+  vector("list", length = 10000)
+  for (i in 1:10000) {
   
-  output[[i]] = sim_regression(n = 30)
+  output[[i]] = sim_regression(beta1 = 1)
   
 }
 
 bind_rows(output) 
+
+```
+
+```{r}
+sim_results = 
+  tibble(beta_ones= c(1,2,3,4,5,6)) %>%
+  mutate(
+    output_list = map(.x = beta_ones, ~ rerun(10000, sim_regression(beta1 = .x))),
+    beta_hats = map(output_list, bind_rows)) %>% 
+  select(-output_list) %>% 
+  unnest(beta_hats) %>%
+  filter(term != "(Intercept)") 
+
+sim_results
 ```
 
 
 ```{r}
-#graph
-output %>% 
-  ggplot(aes(x = beta0_hat, y = beta1_hat)) + 
+# plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β1 on the x axis
+sim_results %>% 
+  janitor::clean_names() %>%
+  mutate(sig= p_value< 5.0e-02,
+         total= nrow(sim_results)) %>%
+  group_by(estimate) %>%
+  mutate(true_sig= sum(sig, na.rm = TRUE)) %>%
+  mutate(pwr= true_sig/total) %>% 
+  ggplot(aes(x = estimate, y = pwr)) + 
   geom_point()
 ```
-* Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β2 on the x axis. Describe the association between effect size and power.
+• As the effect size increases, the power increases.
 
+```{r}
+# Make a plot showing the average estimate of β̂ 1 on the y axis and the true value of β1 on the x axis
 
-* Make a plot showing the average estimate of β̂ 1 on the y axis and the true value of β1 on the x axis. Make a second plot (or overlay on the first) the average estimate of β̂ 1 only in samples for which the null was rejected on the y axis and the true value of β1 on the x axis. Is the sample average of β̂ 1 across tests for which the null is rejected approximately equal to the true value of β1? Why or why not?
+one_plot=
+  sim_results %>% 
+  janitor::clean_names() %>%
+  group_by(estimate) %>%
+  summarise(mean= mean(estimate)) %>%
+  ggplot(aes(x = estimate, y = mean)) + 
+  geom_point() +
+  labs(
+    title = "All scenarios",
+    x = " true value of β",
+    y = "average estimate of β̂ ")
 
+# Make a second plot (or overlay on the first) the average estimate of β̂ 1 only in samples for which the null was rejected on the y axis and the true value of β1 on the x axis
 
+two_plot=
+  sim_results %>% 
+  janitor::clean_names() %>%
+  mutate(sig= p_value< 5.0e-02) %>%
+  filter(sig == FALSE) %>%
+  group_by(estimate) %>%
+  summarise(mean= mean(estimate)) %>%
+  ggplot(aes(x = estimate, y = mean)) + 
+  geom_point() +
+  labs(
+    title = "Where null was rejected",
+    x = "true value of β1 on the x axis",
+    y = "average estimate of β" )
+
+patchwork::plot_layout(one_plot + two_plot)
+```
+
+• The sample average of β̂ 1 across tests for which the null is rejectedis not equal to the true value of β1 because the sample has been narrowed to only tests with significant p-values, thre range is much more precise.
