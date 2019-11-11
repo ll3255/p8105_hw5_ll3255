@@ -109,62 +109,53 @@ csv_content %>%
 
 # Problem 3
 
-### Linear Regression Model ()
+### Linear Regression Model 
 ```{r}
-# create function to draw the sample and calculate the y's
-sim_data = tibble (
-  beta0 = 2,
-  beta1 = 0,
-  x = rnorm(30),
-  error = 50,
-  y = beta0 + beta1*x + error
-)
+# function
+set.seed(1)
+library(broom)
 
-# create function to run regressions and output beta1_hat and p-value 
-sim_regression = function(n, beta0, beta1) {
+sim_regression = function(n = 30, beta0 = 2, beta1 = 0, variance = 50) {
   
   sim_data = tibble(
-    x = rnorm(n, 0, 1),
+    x = rnorm(n, mean = 0, sd = 1),
     y = beta0 + beta1 * x + rnorm(n, 0, 7.07)
   )
   
   ls_fit = lm(y ~ x, data = sim_data)
   
-  tibble(
-    beta1_hat = coef(ls_fit)[2]
-  )
+  tidy(ls_fit)
+  
+}
+```
+
+```{r}
+# get estimates
+sim_regression(beta1=0)
+```
+
+```{r}
+## rerun using a for loop
+output = vector("list", length = 1000)
+for (i in 1:1000) {
+  
+  output[[i]] = sim_regression(n = 30)
+  
 }
 
-# get output from the function
-output = vector("list", 100)
+bind_rows(output) 
+```
 
-# run regressions
-for (i in 1:100) {
-  output[[i]] = sim_regression(30)
-}
-# clean the results from the iterration
-sim_results = bind_rows(output)
-# iterate
-sim_results = 
-  rerun(100, sim_regression(30, 2, 3)) %>% 
-  bind_rows()
 
-# visualize results
-sim_results %>% 
+```{r}
+#graph
+output %>% 
   ggplot(aes(x = beta0_hat, y = beta1_hat)) + 
   geom_point()
-# p-value?
-#broom::tidy()
 ```
-
-
 * Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β2 on the x axis. Describe the association between effect size and power.
-```{r}
 
-```
 
 * Make a plot showing the average estimate of β̂ 1 on the y axis and the true value of β1 on the x axis. Make a second plot (or overlay on the first) the average estimate of β̂ 1 only in samples for which the null was rejected on the y axis and the true value of β1 on the x axis. Is the sample average of β̂ 1 across tests for which the null is rejected approximately equal to the true value of β1? Why or why not?
-```{r}
 
-```
 
