@@ -132,8 +132,8 @@ sim_regression = function(n = 30, beta0 = 2, beta1 = 0, variance = 50) {
 # visualize results from function
 
 output = 
-  vector("list", length = 100)
-  for (i in 1:100) {
+  vector("list", length = 10000)
+  for (i in 1:10000) {
   
   output[[i]] = sim_regression(beta1 = 1)
   
@@ -142,7 +142,7 @@ output =
 bind_rows(output) 
 ```
 
-    ## # A tibble: 200 x 5
+    ## # A tibble: 20,000 x 5
     ##    term        estimate std.error statistic p.value
     ##    <chr>          <dbl>     <dbl>     <dbl>   <dbl>
     ##  1 (Intercept)   0.362       1.27    0.284  0.779  
@@ -155,13 +155,13 @@ bind_rows(output)
     ##  8 x             0.0375      1.20    0.0311 0.975  
     ##  9 (Intercept)   4.09        1.20    3.42   0.00196
     ## 10 x             2.61        1.20    2.17   0.0388 
-    ## # … with 190 more rows
+    ## # … with 19,990 more rows
 
 ``` r
 sim_results = 
   tibble(beta_ones= c(1,2,3,4,5,6)) %>%
   mutate(
-    output_list = map(.x = beta_ones, ~ rerun(1000, sim_regression(beta1 = .x))),
+    output_list = map(.x = beta_ones, ~ rerun(10000, sim_regression(beta1 = .x))),
     beta_hats = map(output_list, bind_rows)) %>% 
   select(-output_list) %>% 
   unnest(beta_hats) %>%
@@ -170,20 +170,20 @@ sim_results =
 sim_results
 ```
 
-    ## # A tibble: 6,000 x 6
+    ## # A tibble: 60,000 x 6
     ##    beta_ones term  estimate std.error statistic p.value
     ##        <dbl> <chr>    <dbl>     <dbl>     <dbl>   <dbl>
-    ##  1         1 x       2.38       1.05     2.26    0.0316
-    ##  2         1 x       0.652      1.66     0.392   0.698 
-    ##  3         1 x      -2.44       1.58    -1.54    0.134 
-    ##  4         1 x       0.245      1.32     0.186   0.854 
-    ##  5         1 x       0.138      1.27     0.109   0.914 
-    ##  6         1 x      -0.120      1.30    -0.0924  0.927 
-    ##  7         1 x       0.612      0.922    0.663   0.513 
-    ##  8         1 x       0.0846     0.876    0.0966  0.924 
-    ##  9         1 x      -0.616      1.38    -0.448   0.658 
-    ## 10         1 x       2.35       1.11     2.12    0.0427
-    ## # … with 5,990 more rows
+    ##  1         1 x        1.29       1.20     1.08   0.291 
+    ##  2         1 x        2.12       1.32     1.61   0.119 
+    ##  3         1 x        0.702      1.62     0.434  0.667 
+    ##  4         1 x       -1.35       1.39    -0.972  0.339 
+    ##  5         1 x        1.62       1.16     1.39   0.175 
+    ##  6         1 x        2.83       1.66     1.70   0.1000
+    ##  7         1 x        3.04       1.75     1.73   0.0939
+    ##  8         1 x        0.703      1.34     0.523  0.605 
+    ##  9         1 x        1.54       1.40     1.10   0.282 
+    ## 10         1 x        3.11       1.29     2.41   0.0225
+    ## # … with 59,990 more rows
 
 ``` r
 # plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of β1 on the x axis
@@ -191,13 +191,14 @@ sim_results %>%
   janitor::clean_names() %>%
   mutate(sig= p_value< 5.0e-02,
          total= nrow(sim_results)) %>%
+  group_by(estimate) %>%
   mutate(true_sig= sum(sig, na.rm = TRUE)) %>%
   mutate(pwr= true_sig/total) %>% 
   ggplot(aes(x = estimate, y = pwr)) + 
   geom_point()
 ```
 
-<img src="hw_5_files/figure-markdown_github/unnamed-chunk-7-1.png" width="90%" /> • Describe the association between effect size and power
+<img src="hw_5_files/figure-markdown_github/unnamed-chunk-7-1.png" width="90%" /> • As the effect size increases, the power increases.
 
 ``` r
 # Make a plot showing the average estimate of β̂ 1 on the y axis and the true value of β1 on the x axis
@@ -210,7 +211,7 @@ one_plot=
   ggplot(aes(x = estimate, y = mean)) + 
   geom_point() +
   labs(
-    title = "Plot One",
+    title = "All scenarios",
     x = " true value of β",
     y = "average estimate of β̂ ")
 
@@ -226,7 +227,7 @@ two_plot=
   ggplot(aes(x = estimate, y = mean)) + 
   geom_point() +
   labs(
-    title = "Plot Two",
+    title = "Where null was rejected",
     x = "true value of β1 on the x axis",
     y = "average estimate of β" )
 
@@ -259,4 +260,4 @@ patchwork::plot_layout(one_plot + two_plot)
     ## attr(,"class")
     ## [1] "plot_layout"
 
-• Is the sample average of β̂ 1 across tests for which the null is rejected approximately equal to the true value of β1? Why or why not?
+• The sample average of β̂ 1 across tests for which the null is rejectedis not equal to the true value of β1 because the sample has been narrowed to only tests with significant p-values, thre range is much more precise.
